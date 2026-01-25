@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Send Email
   document.querySelector('#compose-form').onsubmit = send_email;
 
-  // Default
+  // Default load
   load_mailbox('inbox');
 });
 
@@ -34,9 +34,8 @@ async function send_email(event) {
     })
   });
 
-  const result = await response.json();
-    if (response.status === 201) {
-      load_mailbox('sent');
+  if (response.status === 201) {
+    load_mailbox('sent');
   }
 }
 
@@ -58,7 +57,7 @@ function load_mailbox(mailbox) {
         div.style.cursor = 'pointer';
         div.style.border = '1px solid #ddd';
         div.style.margin = '2px 0';
-        
+
         div.innerHTML = `
           <span><strong>${email.sender}</strong> &nbsp; ${email.subject}</span>
           <span class="text-muted">${email.timestamp}</span>
@@ -88,26 +87,35 @@ function view_email(id, mailbox) {
         <div class="p-2">
           <button class="btn btn-sm btn-outline-primary" id="reply">Reply</button>
           ${mailbox !== 'sent' ? `<button class="btn btn-sm btn-outline-secondary" id="archive">${email.archived ? 'Unarchive' : 'Archive'}</button>` : ''}
+          <button class="btn btn-sm btn-outline-danger ml-2" id="delete-btn">Delete</button>
         </div>
       `;
 
       // Mark as read
       fetch(`/emails/${id}`, { method: 'PUT', body: JSON.stringify({ read: true }) });
 
-      // Archive button logic
+      // --- Reply Button Logic ---
+      document.querySelector('#reply').onclick = () => {
+        compose_email();
+        document.querySelector('#compose-recipients').value = email.sender;
+        document.querySelector('#compose-subject').value = email.subject.startsWith('Re:') ? email.subject : `Re: ${email.subject}`;
+        document.querySelector('#compose-body').value = `On ${email.timestamp} ${email.sender} wrote:\n${email.body}\n\n`;
+      }
       if (mailbox !== 'sent') {
         document.querySelector('#archive').onclick = () => {
           fetch(`/emails/${id}`, { method: 'PUT', body: JSON.stringify({ archived: !email.archived }) })
             .then(() => load_mailbox('inbox'));
         };
       }
-
-      // Reply button logic
-      document.querySelector('#reply').onclick = () => {
-        compose_email();
-        document.querySelector('#compose-recipients').value = email.sender;
-        document.querySelector('#compose-subject').value = email.subject.startsWith('Re:') ? email.subject : `Re: ${email.subject}`;
-        document.querySelector('#compose-body').value = `On ${email.timestamp} ${email.sender} wrote:\n${email.body}\n\n`;
+      document.querySelector('#delete-btn').onclick = () => {
+        if (confirm("Are you sure you want to delete this email?")) {
+          fetch(`/emails/${id}/delete`, {
+            method: 'DELETE'
+          })
+          .then(() => {
+            load_mailbox('inbox');
+          });
+        }
       };
     });
 }

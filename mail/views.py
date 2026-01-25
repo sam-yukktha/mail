@@ -152,3 +152,20 @@ def register(request):
         login(request, user)
         return HttpResponseRedirect(reverse("index"))
     return render(request, "mail/register.html")
+
+@csrf_exempt
+def delete_email(request, email_id):
+    if request.method == "DELETE":
+        try:
+            
+            email = Email.objects.get(pk=email_id)
+            
+            if email.user != request.user:
+                return JsonResponse({"error": "Not authorized"}, status=403)
+                
+            email.delete()
+            return JsonResponse({"message": "Email deleted successfully."}, status=204)
+        except Email.DoesNotExist:
+            return JsonResponse({"error": "Email not found."}, status=404)
+
+    return JsonResponse({"error": "Method not allowed."}, status=405)    
